@@ -1,5 +1,5 @@
 {
-  "name": "@luxiag/vue-cropper",
+  "name": "vue-ts-cropper",
   "version": "1.0.0",
   "private": false,
   "type": "module",
