@@ -10,24 +10,24 @@
       'transform':`translate(${cutModel.x}px, ${cutModel.y}px)`
 
     }" 
-     @mousedown="handleCutModelMoveDownEvent" 
-     @touchstart="handleCutModelMoveDownEvent"
-    >
 
+    > 
+      <div class="img-cropper__cut__move"      @mousedown="handleCutModelMoveDownEvent" 
+      @touchstart="handleCutModelMoveDownEvent"></div>
       <ul class="img-cropper__cut__handle">
-        <li class="img-cropper__cut__left_top square_blue"></li>
-        <li class="img-cropper__cut__top square_blue" ></li>
-        <li class="img-cropper__cut__right_top square_blue"></li>
-        <li class="img-cropper__cut__left square_blue"></li>
-        <li class="img-cropper__cut__right square_blue"></li>
-        <li class="img-cropper__cut__left_bottom square_blue"></li>
-        <li class="img-cropper__cut__bottom square_blue"></li>
-        <li class="img-cropper__cut__right_bottom square_blue"></li>
+        <li class="img-cropper__cut__left_top square_blue"  @mousedown="$e =>handleCutModelSizeEvent($e,MoveTypeEnum.left_top)"></li>
+        <li class="img-cropper__cut__top square_blue" @mousedown="$e =>handleCutModelSizeEvent($e,MoveTypeEnum.top)"></li>
+        <li class="img-cropper__cut__right_top square_blue"  @mousedown="$e =>handleCutModelSizeEvent($e,MoveTypeEnum.right_top)"></li>
+        <li class="img-cropper__cut__left square_blue"  @mousedown="$e =>handleCutModelSizeEvent($e,MoveTypeEnum.left)"></li>
+        <li class="img-cropper__cut__right square_blue"  @mousedown="$e =>handleCutModelSizeEvent($e,MoveTypeEnum.right)"></li>
+        <li class="img-cropper__cut__left_bottom square_blue"  @mousedown="$e =>handleCutModelSizeEvent($e,MoveTypeEnum.left_bottom)"></li>
+        <li class="img-cropper__cut__bottom square_blue"  @mousedown="$e =>handleCutModelSizeEvent($e,MoveTypeEnum.bottom)"></li>
+        <li class="img-cropper__cut__right_bottom square_blue"  @mousedown="$e =>handleCutModelSizeEvent($e,MoveTypeEnum.right_bottom)"></li>
 
-        <li class="img-cropper__cut__line_top"></li>
-        <li class="img-cropper__cut__line_right"></li>
-        <li class="img-cropper__cut__line_bottom"></li>
-        <li class="img-cropper__cut__line_left"></li>
+        <li class="img-cropper__cut__line_top" @mousedown="$e =>handleCutModelSizeEvent($e,MoveTypeEnum.top)"></li>
+        <li class="img-cropper__cut__line_right" @mousedown="$e =>handleCutModelSizeEvent($e,MoveTypeEnum.right)"></li>
+        <li class="img-cropper__cut__line_bottom" @mousedown="$e =>handleCutModelSizeEvent($e,MoveTypeEnum.bottom)"></li>
+        <li class="img-cropper__cut__line_left" @mousedown="$e =>handleCutModelSizeEvent($e,MoveTypeEnum.left)"></li>
       </ul>
 
     </div>
@@ -87,8 +87,11 @@ enum MoveTypeEnum {
 const cutModel = reactive({
   maxWidth: 0,
   maxHeight: 0,
+  minWidth:10,
+  minHeight:10,
   width: 0,
   height: 0,
+
   x: 0,
   y: 0,
   // start move point
@@ -96,6 +99,8 @@ const cutModel = reactive({
   startMoveY:0,
   beforeMoveX:0,
   beforeMoveY:0,
+  beforeChangeWidth:0,
+  beforeChangeHeight:0,
   moveType: MoveTypeEnum.left_top
 })
 
@@ -128,7 +133,6 @@ const handleCutModelMoveDownEvent = (e: MouseEventType) => {
 const moveCutModelEvent = (e: MouseEventType) => {
  e.preventDefault()
 
-
   const movingX = 'clientX' in e ? e.clientX : 'touches' in e ? e.touches[0].clientX : 0
   const movingY = 'clientY' in e ? e.clientY : 'touches' in e ? e.touches[0].clientY : 0
 
@@ -152,15 +156,20 @@ const leaveCutModelEvent = (e:MouseEventType) => {
 
 const handleCutModelSizeEvent = (e:MouseEventType,type:MoveTypeEnum ) => {
   e.preventDefault()
+  if('touches' in e&&e.touches.length>1){ 
+    return
+  }
   cutModel.startMoveX = 'clientX' in e ? e.clientX : 'touches' in e ? e.touches[0].clientX : 0
   cutModel.startMoveY = 'clientY' in e ? e.clientY : 'touches' in e ? e.touches[0].clientY : 0
+  cutModel.beforeMoveX = cutModel.x
+  cutModel.beforeMoveY = cutModel.y
+  cutModel.beforeChangeHeight = cutModel.height
+  cutModel.beforeChangeWidth = cutModel.width
   window.addEventListener('mousemove',changeCutModelSize)
   window.addEventListener('mouseup',leaveCutModelSize)
   window.addEventListener('touchmove',changeCutModelSize)
   window.addEventListener('touchend',leaveCutModelSize)
   cutModel.moveType = type
-
-
 }
 
 const changeCutModelSize = (e: MouseEventType) => {
@@ -168,20 +177,62 @@ const changeCutModelSize = (e: MouseEventType) => {
 
   const movingX = 'clientX' in e ? e.clientX : 'touches' in e ? e.touches[0].clientX : 0
   const movingY = 'clientY' in e ? e.clientY : 'touches' in e ? e.touches[0].clientY : 0
-
+  const height = cutModel.startMoveY - movingY 
+  const width = cutModel.startMoveX - movingX
   switch(cutModel.moveType) { 
     case MoveTypeEnum.top:
-      const height = cutModel.startMoveY - movingY 
-      cutModel.height = cutModel.height + height > cutModel.maxHeight ? cutModel.maxHeight : cutModel.height + height < 0 ? 0 : cutModel.height + height
-      cutModel.y = cutModel.y - height < 0 ? 0 : cutModel.y - height > cutModel.maxHeight ? cutModel.maxHeight: cutModel.y - height
+      
+      cutModel.height = 
+        cutModel.beforeChangeHeight + height > cutModel.maxHeight - cutModel.beforeMoveY  ? cutModel.maxHeight - cutModel.beforeMoveY:
+        cutModel.beforeChangeHeight + height < cutModel.minHeight ? cutModel.minHeight : 
+        cutModel.beforeChangeHeight + height
+
+      cutModel.y = cutModel.beforeMoveY - height < 0 ? 0 : 
+        cutModel.beforeMoveY - height > cutModel.maxHeight ? cutModel.maxHeight: 
+        cutModel.beforeMoveY - height    
+    
+      break;
     case MoveTypeEnum.bottom:
+      cutModel.height = cutModel.y + cutModel.height >= cutModel.maxHeight ? cutModel.height: 
+        cutModel.beforeChangeHeight - height > cutModel.maxHeight ? cutModel.maxHeight :
+        cutModel.beforeChangeHeight - height < cutModel.minHeight ? cutModel.minHeight : 
+        cutModel.beforeChangeHeight - height
+      break;
     case MoveTypeEnum.left:
+
+      cutModel.width =cutModel.beforeMoveX - width <= 0 ? cutModel.width:  
+      cutModel.beforeChangeWidth + width > cutModel.maxWidth ? cutModel.maxWidth : 
+      cutModel.beforeChangeWidth + width < cutModel.minWidth ? cutModel.minWidth : 
+      cutModel.beforeChangeWidth + width
+
+      cutModel.x = cutModel.beforeMoveX - width <= 0 ? 0 : 
+      cutModel.beforeMoveX - width > cutModel.maxWidth ? cutModel.maxWidth: 
+      cutModel.beforeMoveX - width
+      break
     case MoveTypeEnum.right:
+
+      cutModel.width = cutModel.width + cutModel.x >= cutModel.maxWidth ? cutModel.width : 
+        cutModel.beforeChangeWidth - width > cutModel.maxWidth ? cutModel.maxWidth : 
+        cutModel.beforeChangeWidth - width < cutModel.minWidth ? cutModel.minWidth : 
+        cutModel.beforeChangeWidth - width
+
+      break
+    case MoveTypeEnum.left_top:
+      cutModel.width = cutModel.beforeChangeWidth + width > cutModel.maxWidth ? cutModel.maxWidth : cutModel.beforeChangeWidth + width < cutModel.minWidth ? cutModel.minWidth : cutModel.beforeChangeWidth + width
+      cutModel.x = cutModel.beforeMoveX - width < 0 ? 0 : cutModel.beforeMoveX - width > cutModel.maxWidth ? cutModel.maxWidth: cutModel.beforeMoveX - width
+      cutModel.height = cutModel.beforeChangeHeight + height > cutModel.maxHeight ? cutModel.maxHeight : cutModel.beforeChangeHeight + height < cutModel.minHeight ? cutModel.minHeight : cutModel.beforeChangeHeight + height
+      cutModel.y = cutModel.beforeMoveY - height < 0 ? 0 : cutModel.beforeMoveY - height > cutModel.maxHeight ? cutModel.maxHeight: cutModel.beforeMoveY - height
+      break
+    case MoveTypeEnum.right_top:
+    case MoveTypeEnum.left_bottom:
+    case MoveTypeEnum.right_bottom:
 
   }
 
 
 }
+
+
 const leaveCutModelSize = (e:MouseEventType) => {
 
   window.removeEventListener('mousemove', changeCutModelSize)
@@ -345,27 +396,27 @@ const getImageData = (img: ImgType) => new Promise(async (resolve, reject) => {
   const NetworkURLReg = /^(https?|ftp|file):\/\/|^\//
 
 
-  if (img.src) {
-    try {
-      switch (img.src) {
-        case DataURLReg.test(img.src):
-          obj.arrayBuffer = await base64ToArrayBuffer(img.src)
-          break
-        case BlobURLReg.test(img.src):
-          obj.arrayBuffer = await blobToArrayBuffer(img.src)
-          break
-        case NetworkURLReg.test(img.src):
-          obj.arrayBuffer = await networkImgToArrayBuffer(img.src)
-          break
-        default:
-          break
-      }
-      obj.orientation = await getOrientation(obj.arrayBuffer)
-    } catch (error) {
-      reject(error)
-    }
+  // if (img.src) {
+  //   try {
+  //     switch (img.src) {
+  //       case DataURLReg.test(img.src):
+  //         obj.arrayBuffer = await base64ToArrayBuffer(img.src)
+  //         break
+  //       case BlobURLReg.test(img.src):
+  //         obj.arrayBuffer = await blobToArrayBuffer(img.src)
+  //         break
+  //       case NetworkURLReg.test(img.src):
+  //         obj.arrayBuffer = await networkImgToArrayBuffer(img.src)
+  //         break
+  //       default:
+  //         break
+  //     }
+  //     obj.orientation = await getOrientation(obj.arrayBuffer)
+  //   } catch (error) {
+  //     reject(error)
+  //   }
 
-  }
+  // }
 })
 
 /**
@@ -410,7 +461,7 @@ const blobToArrayBuffer = (blob: Blob): Promise<Uint8Array> => new Promise((reso
   reader.readAsArrayBuffer(blob)
   reader.onload = () => {
     const arrayBuffer = reader.result
-    resolve(arrayBuffer)
+    // resolve(arrayBuffer)
   }
 })
 
@@ -464,13 +515,19 @@ $drop_range: 10px;
 
 
 
-
+    .img-cropper__cut__move {
+      width: 100%;
+      height: 100%;
+      z-index: 1;
+      margin: $drop_range/2;
+      box-sizing: border-box;
+    }
     .img-cropper__cut__handle {
       list-style-type: none;
+      z-index: 11;
       padding: 0;
       margin: 0;
       >li {
-        list-style: none;
         list-style-type: none;
       }
 
@@ -487,6 +544,7 @@ $drop_range: 10px;
       }
       .img-cropper__cut__top {
         position: absolute;
+        top: 0;
         left: 50%;
         margin-left: -$square_size/2;
         margin-top: -$square_size/2;
@@ -543,7 +601,7 @@ $drop_range: 10px;
         height: $drop_range;
         position: absolute;
         width: 100%;
-        top: 0px;
+        top: -$drop_range/2;
         left: 0px;
         cursor: n-resize;
       }
